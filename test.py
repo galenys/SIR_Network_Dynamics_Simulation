@@ -69,15 +69,18 @@ class Simulation:
         return [susceptible/self.N, infected/self.N, recovered/self.N]
     
 
-    def disease_graph(self, infected_proportion, timesteps):
+    def disease_graph(self, infected_proportion):
         self.initialise_population(infected=list(range(round(self.N*infected_proportion))))
         sus, inf, rec = [], [], []
-        for _ in range(timesteps):
-            proportions = self.get_proportions()
+        proportions = self.get_proportions()
+        timesteps = 0
+        while proportions[1] != 0:
             sus.append(proportions[0])
             inf.append(proportions[1])
             rec.append(proportions[2])
             self.timestep()
+            proportions = self.get_proportions()
+            timesteps += 1
         X = np.linspace(0, timesteps, timesteps)
         plt.plot(X, sus, label="Susceptible")
         plt.plot(X, inf, label="Infected")
@@ -85,6 +88,7 @@ class Simulation:
         plt.legend()
         plt.ylim((0, 1))
         plt.show()
+        return proportions[2]
 
     def display_network(self):
         random_pos = nx.random_layout(self.G, seed=42)
@@ -105,11 +109,10 @@ class Simulation:
     #     plt.show()
 
 S = Simulation(
-        G=nx.gnp_random_graph(500, 0.05, seed=42),
+        G=nx.gnp_random_graph(500, 0.01, seed=42),
         # G=nx.scale_free_graph(500),
         N=500,
         inf_rate=0.05,
         rec_rate=0.1
         )
-
 
