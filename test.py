@@ -108,11 +108,28 @@ class Simulation:
         return proportions[2]
 
     def average_disease_graph_recovered_rate(self, infected_proportion, iterations):
-        total = 0
+        no_vac_samples = []
+        self.no_vaccines()
         for i in range(iterations):
-            total += self.disease_graph(infected_proportion=infected_proportion)
-            print(f"Iteration {i}")
-        return total / iterations
+            no_vac_samples.append(self.disease_graph(infected_proportion=infected_proportion))
+            print(f"No vaccination: {i}")
+
+        random_vac_samples = []
+        self.vaccinate_randomly(0.5)
+        for i in range(iterations):
+            random_vac_samples.append(self.disease_graph(infected_proportion=infected_proportion))
+            print(f"Random vaccination: {i}")
+
+        hub_vac_samples = []
+        self.vaccinate_highest_degree_first(0.5)
+        for i in range(iterations):
+            hub_vac_samples.append(self.disease_graph(infected_proportion=infected_proportion))
+            print(f"Hub vaccination: {i}")
+
+        plt.xticks([1,2,3], ["No Vaccines", "Random Vaccination", "Vaccinate Hubs"])
+        plt.boxplot([no_vac_samples, random_vac_samples, hub_vac_samples])
+        plt.legend()
+        plt.show()
 
     def display_network(self):
         random_pos = nx.random_layout(self.G, seed=42)
