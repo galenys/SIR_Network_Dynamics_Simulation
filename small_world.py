@@ -1,6 +1,5 @@
 import networkx as nx
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 import random
 import numpy as np
 from enum import Enum
@@ -43,12 +42,20 @@ class Simulation:
     def vaccinate_randomly(self, p):
         self.vaccinated = random.sample(range(self.N), round(self.N * p))
 
-    def vaccinate_highest_degree_first(self, p):
-        self.vaccinated = list(range(self.N))
-        self.vaccinated.sort(reverse=True, key=self.get_degree)
-        self.vaccinated = self.vaccinated[:round(self.N * p)]
+    def vaccinate_highest_betweenness_first(self, p):
+        betweenness = nx.betweenness_centrality(self.G, normalized=False)
+        a = [k for k, _ in sorted(betweenness.items(), key=lambda item : item[1])]
+        a.reverse()
+        self.vaccinated = a[:round(self.N * p)]
 
-    def get_degree(self, i):
+    def vaccinate_highest_clustering_coefficient_first(self, p):
+        clustering = nx.clustering(self.G)
+        a = [k for k, _ in sorted(clustering.items(), key=lambda item : item[1])]
+        a.reverse()
+        self.vaccinated = a[:round(self.N * p)]
+
+
+    def get_betweenness(self, i):
         return self.G.degree[i]
 
     def timestep(self):
@@ -119,18 +126,25 @@ class Simulation:
         random_vac_samples = []
         self.vaccinate_randomly(0.5)
         for i in range(iterations):
-            random_vac_samples.append(self.disease_graph(infected_proportion=infected_proportion))
+            random_vac_samples.append(self.disease_graph(infected_proportion))
             print(f"Random vaccination: {i}")
 
-        hub_vac_samples = []
-        self.vaccinate_highest_degree_first(0.5)
+        betweenness_vac_samples = []
+        self.vaccinate_highest_betweenness_first(0.5)
         for i in range(iterations):
-            hub_vac_samples.append(self.disease_graph(infected_proportion=infected_proportion))
-            print(f"Hub vaccination: {i}")
+            betweenness_vac_samples.append(self.disease_graph(infected_proportion))
+            print(f"Betweenness vaccination: {i}")
 
-        plt.boxplot([no_vac_samples, random_vac_samples, hub_vac_samples])
+        clustering_vac_samples = []
+        self.vaccinate_highest_clustering_coefficient_first(0.5)
+        for i in range(iterations):
+            clustering_vac_samples.append(self.disease_graph(infected_proportion))
+            print(f"Clustering vaccination: {i}")
+
+
+        plt.boxplot([no_vac_samples, random_vac_samples, betweenness_vac_samples, clustering_vac_samples])
         plt.ylabel("Proportion of population affected by illness")
-        plt.xticks([1,2,3], ["No Vaccination", "Random Vaccination", "Targeted Vaccination"])
+        plt.xticks([1,2,3,4], ["No Vaccination", "Random Vaccination", "Betweenness Vaccination", "Clustering Vaccination"])
         plt.show()
 
     def display_network(self):
@@ -140,23 +154,18 @@ class Simulation:
         plt.show()
 
 S = Simulation(
-        # G=nx.gnp_random_graph(500, 0.005, seed=42),
-        # G=nx.scale_free_graph(500, seed=42).to_undirected(),
-        G=nx.watts_strogatz_graph(500, 20, 0.0001),
+        G=nx.watts_strogatz_graph(n=500, k=20, p=0.001),
         N=500,
         inf_rate=0.01,
         rec_rate=0.1,
         vacc_inf_rate=0.001
         )
 
-
-
-
 def varied_parameter_simulations(iterations):
     simulationA = Simulation(
-                G=power_law_graph(500, 2),
+                G=nx.watts_strogatz_graph(500, 20, 10**(-5)),
                 N=500,
-                inf_rate=0.1,
+                inf_rate=0.01,
                 rec_rate=0.1,
                 vacc_inf_rate=0.001
             )
@@ -166,9 +175,9 @@ def varied_parameter_simulations(iterations):
         print(f"A: {i}")
 
     simulationB = Simulation(
-                G=power_law_graph(500, 2.25),
+                G=nx.watts_strogatz_graph(500, 20, 10**(-4)),
                 N=500,
-                inf_rate=0.1,
+                inf_rate=0.01,
                 rec_rate=0.1,
                 vacc_inf_rate=0.001
             )
@@ -177,11 +186,10 @@ def varied_parameter_simulations(iterations):
         samplesB.append(simulationB.disease_graph(0.1))
         print(f"B: {i}")
 
-
     simulationC = Simulation(
-                G=power_law_graph(500, 2.5),
+                G=nx.watts_strogatz_graph(500, 20, 10**(-3)),
                 N=500,
-                inf_rate=0.1,
+                inf_rate=0.01,
                 rec_rate=0.1,
                 vacc_inf_rate=0.001
             )
@@ -191,9 +199,9 @@ def varied_parameter_simulations(iterations):
         print(f"C: {i}")
 
     simulationD = Simulation(
-                G=power_law_graph(500, 2.75),
+                G=nx.watts_strogatz_graph(500, 20, 10**(-2)),
                 N=500,
-                inf_rate=0.1,
+                inf_rate=0.01,
                 rec_rate=0.1,
                 vacc_inf_rate=0.001
             )
@@ -203,9 +211,9 @@ def varied_parameter_simulations(iterations):
         print(f"D: {i}")
 
     simulationE = Simulation(
-                G=power_law_graph(500, 3),
+                G=nx.watts_strogatz_graph(500, 20, 10**(-1)),
                 N=500,
-                inf_rate=0.1,
+                inf_rate=0.01,
                 rec_rate=0.1,
                 vacc_inf_rate=0.001
             )
@@ -214,23 +222,22 @@ def varied_parameter_simulations(iterations):
         samplesE.append(simulationE.disease_graph(0.1))
         print(f"E: {i}")
 
-    plt.boxplot([samplesA, samplesB, samplesC, samplesD, samplesE])
+    simulationF = Simulation(
+                G=nx.watts_strogatz_graph(500, 20, 1),
+                N=500,
+                inf_rate=0.01,
+                rec_rate=0.1,
+                vacc_inf_rate=0.001
+            )
+    samplesF = []
+    for i in range(iterations):
+        samplesF.append(simulationF.disease_graph(0.1))
+        print(f"F: {i}")
+
+
+
+    plt.boxplot([samplesA, samplesB, samplesC, samplesD, samplesE, samplesF])
     plt.ylabel("Proportion of population affected by illness")
-    plt.xticks([1, 2, 3, 4, 5], ["gamma=2", "gamma=2.25", "gamma=2.5", "gamma=2.75", "gamma=3"])
+    plt.xticks([1, 2, 3, 4, 5, 6], ["p=10^(-5))", "p=10^(-4)", "p=10^(-3)", "p=10^(-2)", "p=10^(-1)", "p=1"])
     plt.show()
-
-
-def power_law_graph(n, exp):
-    while True:  
-        s = []
-        while len(s) < n:
-            nextval = int(nx.utils.powerlaw_sequence(1, exp)[0]) #100 nodes, power-law exponent 2.5
-            if nextval != 0:
-                s.append(nextval)
-        if sum(s)%2 == 0:
-            break
-    G = nx.configuration_model(s)
-    G = nx.Graph(G) # remove parallel edges
-    G.remove_edges_from(nx.selfloop_edges(G))
-    return G
 
